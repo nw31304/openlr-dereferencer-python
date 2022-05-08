@@ -62,14 +62,16 @@ def make_candidates(
     bearing = compute_bearing(lrp, candidate, is_last_lrp, config.bear_dist, geo_tool)
     bear_diff = angle_difference(bearing, lrp.bear)
     if abs(bear_diff) > config.max_bear_deviation:
+        debug("Not considering %s because the bearing difference is %.02f°. (bear: %.02f. lrp bear: %.02f)", candidate, bear_diff, bearing, lrp.bear)
         if observer is not None:
             observer.on_candidate_rejected(
                 lrp, candidate,
                 f"Bearing difference = {bear_diff} greater than max. bearing deviation = {config.max_bear_deviation}",
             )
         debug(
-            f"Not considering {candidate} because the bearing difference is {bear_diff} °.",
-            f"bear: {bearing}. lrp bear: {lrp.bear}",
+            f"Not considering %s because the bearing difference is %s °.",
+            f"bear: %s. lrp bear: %s",
+            candidate, bear_diff, bearing, lrp.bear
         )
         return
     candidate.score = score_lrp_candidate(lrp, candidate, config, is_last_lrp, geo_tool)
@@ -96,7 +98,7 @@ def nominate_candidates(
 ) -> Iterable[Candidate]:
     "Yields candidate lines for the LRP along with their score."
     debug(
-        f"Finding candidates for LRP {lrp} at {coords(lrp)} in radius {config.search_radius}"
+        "Finding candidates for LRP %s at %s in radius %.02f", lrp, coords(lrp), config.search_radius
     )
     for line in reader.find_lines_close_to(coords(lrp), config.search_radius):
         yield from make_candidates(lrp, line, config, observer, is_last_lrp, geo_tool)
@@ -126,19 +128,15 @@ def get_candidate_route(start: Candidate, dest: Candidate, lfrc: FRC, maxlen: fl
         The returned path excludes the lines the candidate points are on.
         If there is no matching path found, None is returned.
     """
-    debug(f"Try to find path between {start, dest}")
+    debug("Try to find path between %s,%s",start, dest)
     if start.line.line_id == dest.line.line_id:
-        return Route(start, [], dest, geo_tool)
-    debug(
-        f"Finding path between nodes {start.line.end_node.node_id, dest.line.start_node.node_id}"
-    )
+        return Route(start, [], dest)
+    debug("Finding path between nodes %d,%d",start.line.end_node.node_id, dest.line.start_node.node_id)
     linefilter = lambda line: line.frc <= lfrc
     try:
-        path = shortest_path(
-            start.line.end_node, dest.line.start_node, geo_tool=geo_tool, linefilter=linefilter, maxlen=maxlen
-        )
-        debug(f"Returning {path}")
-        return Route(start, path, dest, geo_tool)
+        path = shortest_path(start.line.end_node, dest.line.start_node, linefilter, maxlen=maxlen)
+        debug("Returning %s", path)
+        return Route(start, path, dest)
     except LRPathNotFoundError:
         debug(f"No path found between these nodes")
         return None
@@ -267,7 +265,7 @@ def handleCandidatePair(
     if observer is not None:
         observer.on_route_success(current, next_lrp, source, dest, route)
 
-    debug(f"DNP should be {current.dnp} m, is {length} m.")
+    debug("DNP should be %.02fm, is %.02fm.", current.dnp, length)
     # If the path does not match DNP, continue with the next candidate pair
     if length < minlen or length > maxlen:
         debug("Shortest path deviation from DNP is too large")
