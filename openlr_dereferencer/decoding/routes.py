@@ -4,8 +4,7 @@ from typing import NamedTuple, Tuple, Optional, List
 from shapely.geometry import LineString
 from shapely.ops import substring
 from openlr import Coordinates
-from ..maps.abstract import Line, path_length
-from ..maps.wgs84 import interpolate, split_line, join_lines, line_string_length
+from ..maps.abstract import Line, path_length, GeoTool
 
 
 class PointOnLine(NamedTuple):
@@ -17,13 +16,13 @@ class PointOnLine(NamedTuple):
     #: A value of 0 references the starting point of the line.
     relative_offset: float
 
-    def _geometry_length_from_start(self):
-        geometry_length = line_string_length(self.line.geometry)
+    def _geometry_length_from_start(self, geo_tool: GeoTool):
+        geometry_length = geo_tool.line_string_length(self.line.geometry)
         return geometry_length * self.relative_offset
 
-    def position(self) -> Coordinates:
+    def position(self, geo_tool: GeoTool) -> Coordinates:
         "Returns the actual geo position"
-        return interpolate(self.line.coordinates(), self._geometry_length_from_start())
+        return geo_tool.interpolate(self.line.coordinates(), self._geometry_length_from_start(geo_tool))
 
     def distance_from_start(self) -> float:
         "Returns the distance in meters from the start of the line to the point"
@@ -33,9 +32,9 @@ class PointOnLine(NamedTuple):
         "Returns the distance in meters from the point to the end of the line"
         return (1.0 - self.relative_offset) * self.line.length
 
-    def split(self) -> Tuple[Optional[LineString], Optional[LineString]]:
+    def split(self, geo_tool: GeoTool) -> Tuple[Optional[LineString], Optional[LineString]]:
         "Splits the Line element that this point is along and returns the parts"
-        return split_line(self.line.geometry, self._geometry_length_from_start())
+        return geo_tool.split_line(self.line.geometry, self._geometry_length_from_start(geo_tool))
 
     @classmethod
     def from_abs_offset(cls, line: Line, meters_into: float):
@@ -90,8 +89,7 @@ class Route(NamedTuple):
         "Offset on the ending line in meters"
         return self.end.distance_to_end()
 
-    @property
-    def shape(self) -> LineString:
+    def shape(self, geo_tool: GeoTool) -> LineString:
         "Returns the shape of the route. The route is has to be continuous."
         if self.start.line.line_id == self.end.line.line_id:
             return substring(
@@ -102,15 +100,15 @@ class Route(NamedTuple):
             )
 
         result = []
-        first = self.start.split()[1]
-        last = self.end.split()[0]
+        first = self.start.split(geo_tool)[1]
+        last = self.end.split(geo_tool)[0]
         if first is not None:
             result.append(first)
         result += [line.geometry for line in self.path_inbetween]
         if last is not None:
             result.append(last)
 
-        return join_lines(result)
+        return geo_tool.join_lines(result)
 
     def coordinates(self) -> List[Coordinates]:
         "Returns all Coordinates of this line location"

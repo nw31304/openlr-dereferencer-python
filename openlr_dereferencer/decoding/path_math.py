@@ -9,7 +9,7 @@ from openlr import Coordinates, LocationReferencePoint
 from .error import LRDecodeError
 from .routes import Route, PointOnLine
 from ..maps import Line
-from ..maps.wgs84 import interpolate, bearing, line_string_length
+from ..maps.abstract import GeoTool
 
 
 def remove_offsets(path: Route, p_off: float, n_off: float) -> Route:
@@ -51,7 +51,7 @@ def coords(lrp: LocationReferencePoint) -> Coordinates:
     return Coordinates(lrp.lon, lrp.lat)
 
 
-def project(line: Line, coord: Coordinates) -> PointOnLine:
+def project(line: Line, coord: Coordinates, geo_tool: GeoTool) -> PointOnLine:
     """Computes the nearest point to `coord` on the line
 
     Returns: The point on `line` where this nearest point resides"""
@@ -59,8 +59,8 @@ def project(line: Line, coord: Coordinates) -> PointOnLine:
 
     to_projection_point = substring(line.geometry, 0.0, fraction, normalized=True)
 
-    meters_to_projection_point = line_string_length(to_projection_point)
-    geometry_length = line_string_length(line.geometry)
+    meters_to_projection_point = geo_tool.line_string_length(to_projection_point)
+    geometry_length = geo_tool.line_string_length(line.geometry)
 
     length_fraction = meters_to_projection_point / geometry_length
 
@@ -76,10 +76,11 @@ def compute_bearing(
         lrp: LocationReferencePoint,
         candidate: PointOnLine,
         is_last_lrp: bool,
-        bear_dist: float
+        bear_dist: float,
+        geo_tool: GeoTool
 ) -> float:
     "Returns the bearing angle of a partial line in degrees in the range 0.0 .. 360.0"
-    line1, line2 = candidate.split()
+    line1, line2 = candidate.split(geo_tool)
     if is_last_lrp:
         if line1 is None:
             return 0.0
@@ -89,6 +90,6 @@ def compute_bearing(
         if line2 is None:
             return 0.0
         coordinates = linestring_coords(line2)
-    bearing_point = interpolate(coordinates, bear_dist)
-    bear = bearing(coordinates[0], bearing_point)
+    bearing_point = geo_tool.interpolate(coordinates, bear_dist)
+    bear = geo_tool.bearing(coordinates[0], bearing_point)
     return degrees(bear) % 360

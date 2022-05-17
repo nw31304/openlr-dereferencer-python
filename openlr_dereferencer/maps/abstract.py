@@ -45,11 +45,43 @@ they can be used to implement line IDs.
 
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Hashable, Sequence
+from typing import Iterable, Hashable, Sequence, Tuple, Optional
 from openlr import Coordinates, FOW, FRC
 from shapely.geometry import LineString, Point
 from shapely.geometry.base import BaseGeometry
 
+class GeoTool(ABC):
+    @abstractmethod
+    def bearing(self, point_a: Coordinates, point_b: Coordinates) -> float:
+        """Returns the angle between self and other relative to true north
+
+        The result of this function is between -pi, pi, including them"""
+
+    @abstractmethod
+    def distance(self, point_a: Coordinates, point_b: Coordinates) -> float:
+        "Returns the distance of two WGS84 coordinates on our planet, in meters"
+
+    @abstractmethod
+    def line_string_length(self, line_string: LineString) -> float:
+        """Returns the length of a line string in meters"""
+
+    @abstractmethod
+    def extrapolate(self, point: Coordinates, dist: float, angle: float) -> Coordinates:
+        "Creates a new point that is `dist` meters away in direction `angle`"
+
+    @abstractmethod
+    def interpolate(self, path: Sequence[Coordinates], distance_meters: float) -> Coordinates:
+        """Go `distance` meters along the `path` and return the resulting point
+
+        When the length of the path is too short, returns its last coordinate"""
+
+    @abstractmethod
+    def split_line(self, line: LineString, meters_into: float) -> Tuple[Optional[LineString], Optional[LineString]]:
+        "Splits a line at `meters_into` meters and returns the two parts. A part is None if it would be a Point"
+
+    @abstractmethod
+    def join_lines(self, lines: Sequence[LineString]) -> LineString:
+        """ Combine a sequence of contiguous LineStrings into a single LineString"""
 
 class GeometricObject(ABC):
     @property

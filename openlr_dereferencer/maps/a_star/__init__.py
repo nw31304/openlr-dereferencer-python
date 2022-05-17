@@ -5,7 +5,7 @@ finds a shortest path between two nodes.
 from typing import List, Optional, Callable, NamedTuple
 from heapq import heapify, heappush, heappop
 from functools import total_ordering
-from ..abstract import Node, Line
+from ..abstract import Node, Line, GeoTool
 from .tools import heuristic, LRPathNotFoundError, tautology
 
 
@@ -29,6 +29,7 @@ class PQItem(NamedTuple):
 def shortest_path(
         start: Node,
         end: Node,
+        geo_tool: GeoTool,
         linefilter: Callable[[Line], bool] = tautology,
         maxlen: float = float("inf"),
 ) -> List[Line]:
@@ -70,7 +71,7 @@ def shortest_path(
     """
 
     # The initial queue item
-    initial = PQItem(Score(heuristic(start, end), 0), start, None, None)
+    initial = PQItem(Score(heuristic(start, end, geo_tool), 0), start, None, None)
 
     # The queue
     open_set = [initial]
@@ -112,7 +113,7 @@ def shortest_path(
                 continue
 
             neighbor_g_score = current.score.g + line.length
-            neighbor_f_score = neighbor_g_score + heuristic(neighbor_node, end)
+            neighbor_f_score = neighbor_g_score + heuristic(neighbor_node, end, geo_tool)
 
             if neighbor_f_score > maxlen:
                 continue

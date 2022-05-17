@@ -9,6 +9,8 @@ from openlr import (
     GeoCoordinateLocationReference,
     PoiWithAccessPointLocationReference,
 )
+from ..maps.abstract import GeoTool
+from ..maps.wgs84 import WGS84GeoTool
 from ..observer import DecoderObserver
 from ..maps import MapReader
 from .error import LRDecodeError
@@ -35,7 +37,8 @@ def decode(
         reference: LR,
         reader: MapReader,
         observer: Optional[DecoderObserver] = None,
-        config: Config = DEFAULT_CONFIG
+        config: Config = DEFAULT_CONFIG,
+        geo_tool: GeoTool = WGS84GeoTool()
 ) -> MapObjects:
     """Translates an openLocationReference into a real location on your map.
 
@@ -69,13 +72,13 @@ def decode(
             Raised if the decoding process was not successful.
     """
     if isinstance(reference, LineLocationReference):
-        return decode_line(reference, reader, config, observer)
+        return decode_line(reference, reader, config, observer, geo_tool)
     elif isinstance(reference, PointAlongLineLocationReference):
-        return decode_pointalongline(reference, reader, config, observer)
+        return decode_pointalongline(reference, reader, config, observer, geo_tool)
     elif isinstance(reference, GeoCoordinateLocationReference):
         return reference.point
     elif isinstance(reference, PoiWithAccessPointLocationReference):
-        return decode_poi_with_accesspoint(reference, reader, config, observer)
+        return decode_poi_with_accesspoint(reference, reader, config, observer, geo_tool)
     else:
         raise LRDecodeError(
             "Currently, the following reference types are supported:\n"
