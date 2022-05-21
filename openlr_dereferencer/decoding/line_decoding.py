@@ -32,4 +32,4 @@ def decode_line(reference: LineLocationReference, reader: MapReader, config: Con
 
     Candidates are searched in a radius of `radius` meters around an LRP."""
     parts = dereference_path(reference.points, reader, config, observer, geo_tool)
-    return build_line_location(parts, reference)
+    return build_line_location(parts, reference, geo_tool)

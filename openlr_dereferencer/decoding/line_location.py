@@ -5,6 +5,7 @@ from openlr import Coordinates, LineLocationReference
 from ..maps import Line
 from .path_math import remove_offsets
 from .routes import Route, PointOnLine
+from ..maps.abstract import GeoTool
 
 class LineLocation:
     """A dereferenced line location. Create it from a combined Route which represents the
@@ -49,7 +50,7 @@ def get_lines(line_location_path: Iterable[Route]) -> List[Line]:
     return result
 
 
-def combine_routes(line_location_path: Iterable[Route]) -> Route:
+def combine_routes(line_location_path: Iterable[Route], geo_tool: GeoTool) -> Route:
     """Builds the whole location reference path
 
     Args:
@@ -66,13 +67,13 @@ def combine_routes(line_location_path: Iterable[Route]) -> Route:
         end = PointOnLine(path.pop(), line_location_path[-1].end.relative_offset)
     else:
         end = PointOnLine(start.line, line_location_path[-1].end.relative_offset)
-    return Route(start, path, end)
+    return Route(start, path, end, geo_tool)
 
 
-def build_line_location(path: List[Route], reference: LineLocationReference) -> LineLocation:
+def build_line_location(path: List[Route], reference: LineLocationReference, geo_tool: GeoTool) -> LineLocation:
     """Builds a LineLocation object from all location reference path parts and the offset values.
 
     The result will be a trimmed list of Line objects, with minimized offset values"""
     p_off = reference.poffs * path[0].length()
     n_off = reference.noffs * path[-1].length()
-    return LineLocation(remove_offsets(combine_routes(path), p_off, n_off))
+    return LineLocation(remove_offsets(combine_routes(path, geo_tool), p_off, n_off, geo_tool))

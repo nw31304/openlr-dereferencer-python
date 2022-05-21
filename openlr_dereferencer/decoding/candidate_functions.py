@@ -118,6 +118,8 @@ def get_candidate_route(start: Candidate, dest: Candidate, lfrc: FRC, maxlen: fl
             "lowest frc". Line objects from map_reader with an FRC lower than lfrc will be ignored.
         maxlen:
             Pathfinding will be canceled after exceeding a length of maxlen.
+        geo_tool:
+            A reference to an instance of GeoTool that understands the route's CRS
 
     Returns:
         If a matching shortest path is found, it is returned as a list of Line objects.
@@ -126,7 +128,7 @@ def get_candidate_route(start: Candidate, dest: Candidate, lfrc: FRC, maxlen: fl
     """
     debug(f"Try to find path between {start, dest}")
     if start.line.line_id == dest.line.line_id:
-        return Route(start, [], dest)
+        return Route(start, [], dest, geo_tool)
     debug(
         f"Finding path between nodes {start.line.end_node.node_id, dest.line.start_node.node_id}"
     )
@@ -136,7 +138,7 @@ def get_candidate_route(start: Candidate, dest: Candidate, lfrc: FRC, maxlen: fl
             start.line.end_node, dest.line.start_node, geo_tool=geo_tool, linefilter=linefilter, maxlen=maxlen
         )
         debug(f"Returning {path}")
-        return Route(start, path, dest)
+        return Route(start, path, dest, geo_tool)
     except LRPathNotFoundError:
         debug(f"No path found between these nodes")
         return None
@@ -171,6 +173,8 @@ def match_tail(
             The wanted behaviour, as configuration options
         observer:
             The optional decoder observer, which emits events and calls back.
+        geo_tool:
+            A reference to an instance of GeoTool that understands the tail's CRS
 
     Returns:
         If any candidate pair matches, the function calls itself for the rest of `tail` and
@@ -241,6 +245,8 @@ def handleCandidatePair(
             The lowest acceptable route length in meters
         maxlen:
             The highest acceptable route length in meters
+        geo_tool:
+            A reference to an instance of GeoTool that understands the candidates' CRS
 
     Returns:
         If a route can not be found or has no acceptable length, None is returned.

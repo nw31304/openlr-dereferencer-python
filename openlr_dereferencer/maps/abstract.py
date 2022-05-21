@@ -51,6 +51,23 @@ from shapely.geometry import LineString, Point
 from shapely.geometry.base import BaseGeometry
 
 class GeoTool(ABC):
+    """
+    Abstract geo-utility class
+
+    Instances of this class contain helper methods invoked by the matcher at various
+    points during the matching process. An instance of this class can be specified on the
+    `decode` function, or else it defaults to a Python-only instance for WGS84 
+    (WGS84GeoTool). The intent is to give the user the opportunity to specialize this 
+    class for a specific target map. Doing so allows the user to more easily target 
+    non-WGS84 maps, and also to optimize processing (for example by implementing the 
+    methods in such a way so as to defer processing to C-libraries such as proj or 
+    geographiclib instead of using the default python-only implementation).   
+    """
+
+    @abstractmethod
+    def transform_coordinate(self, coord: Coordinates) -> Coordinates:
+        """ Transforms a WGS84 coordinate into the local CRS """
+
     @abstractmethod
     def bearing(self, point_a: Coordinates, point_b: Coordinates) -> float:
         """Returns the angle between self and other relative to true north

@@ -15,8 +15,15 @@ def pairwise(iterable):
 
 
 class WGS84GeoTool(GeoTool):
+    """
+    Subclass of GeoTool specialized for WGS84 target maps
+    """
 
     geod = Geodesic.WGS84
+
+    def transform_coordinate(self, coord: Coordinates) -> Coordinates:
+        """ Transforms a WGS84 coordinate into the local CRS """
+        return coord
 
     def distance(self, point_a: Coordinates, point_b: Coordinates) -> float:
         "Returns the distance of two WGS84 coordinates on our planet, in meters"
