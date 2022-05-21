@@ -51,6 +51,9 @@ def decode(
             An observer that collects information when events of interest happen at the decoder
         config:
             A definition of the decoding behaviour providing various settings
+        geo_tool: 
+            An optional reference to an instance of GeoTool that understands the target CRS 
+            (defaults to `WGS84GeoTool`)
 
     Returns:
         This function will return one or more map object, optionally wrapped into some class.

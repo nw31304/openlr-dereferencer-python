@@ -18,7 +18,8 @@ from openlr_dereferencer.decoding.routes import PointOnLine, Route
 from openlr_dereferencer.decoding.path_math import remove_offsets
 from openlr_dereferencer.observer import SimpleObserver
 from openlr_dereferencer.example_sqlite_map import ExampleMapReader
-from openlr_dereferencer.maps.wgs84 import distance, bearing, extrapolate
+from openlr_dereferencer.maps.abstract import GeoTool
+from openlr_dereferencer.maps.wgs84 import WGS84GeoTool
 
 from .example_mapformat import setup_testdb, setup_testdb_in_memory, remove_db_file
 
@@ -56,7 +57,8 @@ class DummyLine(NamedTuple):
     @property
     def length(self) -> float:
         "Return distance between star and end node"
-        return distance(self.start_node.coord, self.end_node.coord)
+        geo_tool = WGS84GeoTool()
+        return geo_tool.distance(self.start_node.coord, self.end_node.coord)
 
     @property
     def geometry(self) -> LineString:
@@ -164,20 +166,22 @@ class DecodingTests(unittest.TestCase):
 
     def test_geoscore_1(self):
         "Test scoring an excactly matching LRP candidate line"
+        geo_tool = WGS84GeoTool()
         lrp = LocationReferencePoint(0.0, 0.0, None, None, None, None, None)
         node1 = DummyNode(Coordinates(0.0, 0.0))
         node2 = DummyNode(Coordinates(0.0, 90.0))
         pal = PointOnLine(DummyLine(None, node1, node2), 0.0)
-        score = score_geolocation(lrp, pal, 1.0)
+        score = score_geolocation(lrp, pal, 1.0, geo_tool)
         self.assertEqual(score, 1.0)
 
     def test_geoscore_0(self):
         "Test scoring a non-matching LRP candidate line"
+        geo_tool = WGS84GeoTool()
         lrp = LocationReferencePoint(0.0, 0.0, None, None, None, None, None)
         node1 = DummyNode(Coordinates(0.0, 0.0))
         node2 = DummyNode(Coordinates(0.0, 90.0))
         pal = PointOnLine(DummyLine(None, node1, node2), 1.0)
-        score = score_geolocation(lrp, pal, 1.0)
+        score = score_geolocation(lrp, pal, 1.0, geo_tool)
         self.assertEqual(score, 0.0)
 
     def test_frcscore_0(self):
@@ -207,63 +211,68 @@ class DecodingTests(unittest.TestCase):
 
     def test_bearingscore_1(self):
         "Test bearing difference of +90°"
+        geo_tool = WGS84GeoTool()
         node1 = DummyNode(Coordinates(0.0, 0.0))
         node2 = DummyNode(Coordinates(0.0, 90.0))
         node3 = DummyNode(Coordinates(1.0, 0.0))
-        wanted_bearing = degrees(bearing(node1.coordinates, node2.coordinates))
+        wanted_bearing = degrees(geo_tool.bearing(node1.coordinates, node2.coordinates))
         wanted = LocationReferencePoint(13.416, 52.525, FRC.FRC2,
                                         FOW.SINGLE_CARRIAGEWAY, wanted_bearing, None, None)
         line = DummyLine(1, node1, node3)
-        score = score_bearing(wanted, PointOnLine(line, 0.0), False, self.config.bear_dist)
+        score = score_bearing(wanted, PointOnLine(line, 0.0), False, self.config.bear_dist, geo_tool)
         self.assertEqual(score, 0.5)
 
     def test_bearingscore_2(self):
         "Test bearing difference of -90°"
+        geo_tool = WGS84GeoTool()
         node1 = DummyNode(Coordinates(0.0, 0.0))
         node2 = DummyNode(Coordinates(0.0, 90.0))
         node3 = DummyNode(Coordinates(-1.0, 0.0))
-        wanted_bearing = degrees(bearing(node1.coordinates, node2.coordinates))
+        wanted_bearing = degrees(geo_tool.bearing(node1.coordinates, node2.coordinates))
         wanted = LocationReferencePoint(13.416, 52.525, FRC.FRC2,
                                         FOW.SINGLE_CARRIAGEWAY, wanted_bearing, None, None)
         line = DummyLine(1, node1, node3)
-        score = score_bearing(wanted, PointOnLine(line, 0.0), False, self.config.bear_dist)
+        score = score_bearing(wanted, PointOnLine(line, 0.0), False, self.config.bear_dist, geo_tool)
         self.assertEqual(score, 0.5)
 
     def test_bearingscore_3(self):
         "Test bearing difference of +90°"
+        geo_tool = WGS84GeoTool()
         node1 = DummyNode(Coordinates(0.0, 0.0))
         node2 = DummyNode(Coordinates(0.0, 90.0))
         node3 = DummyNode(Coordinates(1.0, 0.0))
-        wanted_bearing = degrees(bearing(node1.coordinates, node2.coordinates))
+        wanted_bearing = degrees(geo_tool.bearing(node1.coordinates, node2.coordinates))
         wanted = LocationReferencePoint(13.416, 52.525, FRC.FRC2,
                                         FOW.SINGLE_CARRIAGEWAY, wanted_bearing, None, None)
         line = DummyLine(1, node1, node3)
-        score = score_bearing(wanted, PointOnLine(line, 1.0), True, self.config.bear_dist)
+        score = score_bearing(wanted, PointOnLine(line, 1.0), True, self.config.bear_dist, geo_tool)
         self.assertAlmostEqual(score, 0.5)
 
     def test_bearingscore_4(self):
         "Test bearing difference of -90°"
+        geo_tool = WGS84GeoTool()
         node1 = DummyNode(Coordinates(0.0, 0.0))
         node2 = DummyNode(Coordinates(0.0, 90.0))
         node3 = DummyNode(Coordinates(-1.0, 0.0))
-        wanted_bearing = degrees(bearing(node1.coordinates, node2.coordinates))
+        wanted_bearing = degrees(geo_tool.bearing(node1.coordinates, node2.coordinates))
         wanted = LocationReferencePoint(13.416, 52.525, FRC.FRC2,
                                         FOW.SINGLE_CARRIAGEWAY, wanted_bearing, None, None)
         line = DummyLine(1, node1, node3)
-        score = score_bearing(wanted, PointOnLine(line, 1.0), True, self.config.bear_dist)
+        score = score_bearing(wanted, PointOnLine(line, 1.0), True, self.config.bear_dist, geo_tool)
         self.assertAlmostEqual(score, 0.5)
 
     def test_bearingscore_5(self):
         "Test perfect/worst possible bearing"
+        geo_tool = WGS84GeoTool()
         node1 = DummyNode(Coordinates(1.0, 0.0))
         node2 = DummyNode(Coordinates(0.0, 0.0))
-        wanted_bearing = degrees(bearing(node1.coordinates, node2.coordinates))
+        wanted_bearing = degrees(geo_tool.bearing(node1.coordinates, node2.coordinates))
         wanted = LocationReferencePoint(13.416, 52.525, FRC.FRC2,
                                         FOW.SINGLE_CARRIAGEWAY, wanted_bearing, None, None)
         line = DummyLine(1, node1, node2)
-        score = score_bearing(wanted, PointOnLine(line, 0.0), False, self.config.bear_dist)
+        score = score_bearing(wanted, PointOnLine(line, 0.0), False, self.config.bear_dist, geo_tool)
         self.assertAlmostEqual(score, 1.0)
-        score = score_bearing(wanted, PointOnLine(line, 1.0), True, self.config.bear_dist)
+        score = score_bearing(wanted, PointOnLine(line, 1.0), True, self.config.bear_dist, geo_tool)
         self.assertAlmostEqual(score, 0.0)
 
     def test_anglescore_1(self):
@@ -280,8 +289,9 @@ class DecodingTests(unittest.TestCase):
 
     def test_generate_candidates_1(self):
         "Generate candidates and pick the best"
+        geo_tool = WGS84GeoTool()
         reference = get_test_linelocation_1()
-        candidates = list(nominate_candidates(reference.points[0], self.reader, self.config, False))
+        candidates = list(nominate_candidates(reference.points[0], self.reader, self.config, False, geo_tool))
         # Sort by score
         candidates.sort(key=lambda candidate: candidate.score, reverse=True)
         # Get only the line ids
@@ -291,6 +301,7 @@ class DecodingTests(unittest.TestCase):
 
     def test_decode_3_lrps(self):
         "Decode a line location of 3 LRPs"
+        geo_tool = WGS84GeoTool()
         reference = get_test_linelocation_1()
         location = decode(reference, self.reader)
         self.assertTrue(isinstance(location, LineLocation))
@@ -344,9 +355,10 @@ class DecodingTests(unittest.TestCase):
 
     def test_decode_poi(self):
         "Test decoding a valid POI with access point location"
+        geo_tool = WGS84GeoTool()
         reference = get_test_poi()
         poi: PoiWithAccessPoint = decode(reference, self.reader)
-        coords = poi.access_point_coordinates()
+        coords = poi.access_point_coordinates(geo_tool)
         self.assertAlmostEqual(coords.lon, 13.4153, delta=0.0001)
         self.assertAlmostEqual(coords.lat, 52.5270, delta=0.0001)
         self.assertEqual(poi.poi, Coordinates(13.414, 52.526))
@@ -432,27 +444,29 @@ class DecodingToolsTests(unittest.TestCase):
 
     def test_remove_offsets(self):
         "Remove offsets containing lines"
+        geo_tool = WGS84GeoTool()
         node0 = DummyNode(Coordinates(13.128987, 52.494595))
-        node1 = DummyNode(extrapolate(node0.coord, 20, 180.0))
-        node2 = DummyNode(extrapolate(node1.coord, 90, 90.0))
-        node3 = DummyNode(extrapolate(node2.coord, 20, 180.0))
+        node1 = DummyNode(geo_tool.extrapolate(node0.coord, 20, 180.0))
+        node2 = DummyNode(geo_tool.extrapolate(node1.coord, 90, 90.0))
+        node3 = DummyNode(geo_tool.extrapolate(node2.coord, 20, 180.0))
         lines = [
             DummyLine(0, node0, node1),
             DummyLine(1, node1, node2),
             DummyLine(2, node2, node3)
         ]
-        route = Route(PointOnLine(lines[0], 0.5), [lines[1]], PointOnLine(lines[2], 0.5))
-        route = remove_offsets(route, 40, 40)
+        route = Route(PointOnLine(lines[0], 0.5), [lines[1]], PointOnLine(lines[2], 0.5), geo_tool)
+        route = remove_offsets(route, 40, 40, geo_tool)
         self.assertListEqual(route.lines, [lines[1]])
         self.assertAlmostEqual(route.length(), 30, delta=1)
 
     def test_remove_offsets_raises(self):
         "Remove too big offsets"
+        geo_tool = WGS84GeoTool()
         node0 = DummyNode(Coordinates(13.128987, 52.494595))
-        node1 = DummyNode(extrapolate(node0.coord, 10, 180.0))
+        node1 = DummyNode(geo_tool.extrapolate(node0.coord, 10, 180.0))
         line = DummyLine(0, node0, node1)
-        route = Route(PointOnLine(line, 0.0), [], PointOnLine(line, 1.0))
+        route = Route(PointOnLine(line, 0.0), [], PointOnLine(line, 1.0), geo_tool)
         with self.assertRaises(LRDecodeError):
-            remove_offsets(route, 11, 0)
+            remove_offsets(route, 11, 0, geo_tool)
         with self.assertRaises(LRDecodeError):
-            remove_offsets(route, 0, 11)
+            remove_offsets(route, 0, 11, geo_tool)

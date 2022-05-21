@@ -12,7 +12,7 @@ from ..maps import Line
 from ..maps.abstract import GeoTool
 
 
-def remove_offsets(path: Route, p_off: float, n_off: float) -> Route:
+def remove_offsets(path: Route, p_off: float, n_off: float, geo_tool:GeoTool) -> Route:
     """Remove start+end offsets, measured in meters, from a route and return the result"""
     debug(f"Will consider positive offset = {p_off} m and negative offset {n_off} m.")
     lines = path.lines
@@ -42,7 +42,8 @@ def remove_offsets(path: Route, p_off: float, n_off: float) -> Route:
     return Route(
         PointOnLine.from_abs_offset(start_line, remaining_poff),
         lines,
-        PointOnLine.from_abs_offset(end_line, end_line.length - remaining_noff)
+        PointOnLine.from_abs_offset(end_line, end_line.length - remaining_noff),
+        geo_tool
     )
 
 

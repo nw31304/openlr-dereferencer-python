@@ -56,6 +56,8 @@ class Route(NamedTuple):
     path_inbetween: List[Line]
     #: The point on which this location is ending
     end: PointOnLine
+    #: GeoTool reference that understands this route's SRID
+    geo_tool: GeoTool
 
     @property
     def lines(self) -> List[Line]:
@@ -89,7 +91,8 @@ class Route(NamedTuple):
         "Offset on the ending line in meters"
         return self.end.distance_to_end()
 
-    def shape(self, geo_tool: GeoTool) -> LineString:
+    @property
+    def shape(self) -> LineString:
         "Returns the shape of the route. The route is has to be continuous."
         if self.start.line.line_id == self.end.line.line_id:
             return substring(
@@ -100,15 +103,15 @@ class Route(NamedTuple):
             )
 
         result = []
-        first = self.start.split(geo_tool)[1]
-        last = self.end.split(geo_tool)[0]
+        first = self.start.split(self.geo_tool)[1]
+        last = self.end.split(self.geo_tool)[0]
         if first is not None:
             result.append(first)
         result += [line.geometry for line in self.path_inbetween]
         if last is not None:
             result.append(last)
 
-        return geo_tool.join_lines(result)
+        return self.geo_tool.join_lines(result)
 
     def coordinates(self) -> List[Coordinates]:
         "Returns all Coordinates of this line location"
