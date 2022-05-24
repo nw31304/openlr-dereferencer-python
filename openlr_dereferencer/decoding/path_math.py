@@ -1,7 +1,7 @@
 "Functions for reckoning with paths, bearing, and offsets"
 
 from math import degrees
-from typing import List
+from typing import List, Optional, Sequence
 from logging import debug
 from shapely.geometry import LineString, Point
 from shapely.ops import substring
@@ -61,7 +61,8 @@ def project(line: Line, coord: Coordinates, geo_tool: GeoTool) -> PointOnLine:
     to_projection_point = substring(line.geometry, 0.0, fraction, normalized=True)
 
     meters_to_projection_point = geo_tool.line_string_length(to_projection_point)
-    geometry_length = geo_tool.line_string_length(line.geometry)
+    #geometry_length = geo_tool.line_string_length(line.geometry)
+    geometry_length = line.length
 
     length_fraction = meters_to_projection_point / geometry_length
 
@@ -81,16 +82,51 @@ def compute_bearing(
         geo_tool: GeoTool
 ) -> float:
     "Returns the bearing angle of a partial line in degrees in the range 0.0 .. 360.0"
-    line1, line2 = candidate.split(geo_tool)
-    if is_last_lrp:
-        if line1 is None:
-            return 0.0
-        coordinates = linestring_coords(line1)
-        coordinates.reverse()
+
+    # check if the bearing and origin points coincide, and return early if so
+    if (not is_last_lrp and candidate.position == 1.0) or (is_last_lrp and candidate.position == 0.0):
+        return 0.0
+
+    # start_fragment:float = candidate.relative_offset
+    # end_fragment:float = 0.0
+
+    # bearing_fragment:float = bear_dist / candidate.line.length
+    # if not is_last_lrp:
+    #     end_fragment = candidate.relative_offset + bearing_fragment
+    # else:
+    #     end_fragment = candidate.relative_offset - bearing_fragment
+
+    # ls = substring(candidate.line.geometry, start_fragment, end_fragment, normalized=True) 
+    # coords = ls.coords
+    # bear = geo_tool.bearing(Coordinates(*coords[0]), Coordinates(*coords[-1]))
+    # return degrees(bear) % 360
+
+
+    bearing_point: Optional[Coordinates] = None
+    coordinates = candidate.line.coordinates()
+    origin = geo_tool.interpolate(coordinates, candidate.distance_from_start())
+
+    # see if we can optimize in the common case of two-point road segments
+    if len(coordinates) == 2:
+        bearing_point = coordinates[0] if is_last_lrp else coordinates[-1]
     else:
-        if line2 is None:
-            return 0.0
-        coordinates = linestring_coords(line2)
-    bearing_point = geo_tool.interpolate(coordinates, bear_dist)
-    bear = geo_tool.bearing(coordinates[0], bearing_point)
+        if is_last_lrp:
+            bearing_point = geo_tool.interpolate(coordinates, candidate.distance_from_start() - bear_dist)
+        else:
+            bearing_point = geo_tool.interpolate(coordinates, candidate.distance_from_start() + bear_dist)
+    bear = geo_tool.bearing(origin, bearing_point)
     return degrees(bear) % 360
+
+    # line1, line2 = candidate.split(geo_tool)
+    # if is_last_lrp:
+    #     if line1 is None:
+    #         return 0.0
+    #     coordinates = linestring_coords(line1)
+    #     coordinates.reverse()
+    # else:
+    #     if line2 is None:
+    #         return 0.0
+    #     coordinates = linestring_coords(line2)
+    # bearing_point = geo_tool.interpolate(coordinates, bear_dist)
+    # bear = geo_tool.bearing(coordinates[0], bearing_point)
+    # return degrees(bear) % 360
