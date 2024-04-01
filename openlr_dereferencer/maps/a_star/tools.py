@@ -1,8 +1,7 @@
 "Helper functions for A*"
 
 from functools import lru_cache
-from ..abstract import Node
-from ..wgs84 import distance
+from ..abstract import Node, GeoTool
 
 
 class LRPathNotFoundError(Exception):
@@ -10,11 +9,11 @@ class LRPathNotFoundError(Exception):
 
 
 @lru_cache(maxsize=2)
-def heuristic(current: Node, target: Node) -> float:
+def heuristic(current: Node, target: Node, geo_tool: GeoTool) -> float:
     """Estimated cost from current to target.
 
     We use geographical distance here as heuristic here."""
-    return distance(current.coordinates, target.coordinates)
+    return geo_tool.distance(current.coordinates, target.coordinates)
 
 
 def tautology(_) -> bool:

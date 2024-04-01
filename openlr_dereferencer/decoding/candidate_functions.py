@@ -5,6 +5,7 @@ from logging import debug
 from typing import Optional, Iterable, List, Tuple
 from openlr import FRC, LocationReferencePoint
 from ..maps import shortest_path, MapReader, Line, Node
+from ..maps.abstract import GeoTool
 from ..maps.a_star import LRPathNotFoundError
 from ..observer import DecoderObserver
 from .candidate import Candidate
@@ -15,15 +16,20 @@ from .routes import Route
 from .configuration import Config
 
 
-def make_candidate(
-    lrp: LocationReferencePoint, line: Line, config: Config, observer: Optional[DecoderObserver], is_last_lrp: bool
-) -> Candidate:
+def make_candidates(
+        lrp: LocationReferencePoint,
+        line: Line,
+        config: Config,
+        is_last_lrp: bool,
+        observer: Optional[DecoderObserver],
+        geo_tool: GeoTool
+) -> Iterable[Candidate]:
     "Returns one or none LRP candidates based on the given line"
     # When the line is of length zero, we expect that also the adjacent lines are considered as candidates, hence
     # we don't need to project on the point that is the degenerated line.
     if line.geometry.length == 0:
         return
-    point_on_line = project(line, coords(lrp))
+    point_on_line = project(line, coords(lrp), geo_tool)
     reloff = point_on_line.relative_offset
     # In case the LRP is not the last LRP
     if not is_last_lrp:
@@ -53,7 +59,7 @@ def make_candidate(
     if is_last_lrp and reloff <= 0.0 or not is_last_lrp and reloff >= 1.0:
         return
     candidate = Candidate(line, reloff)
-    bearing = compute_bearing(lrp, candidate, is_last_lrp, config.bear_dist)
+    bearing = compute_bearing(lrp, candidate, is_last_lrp, config.bear_dist, geo_tool)
     bear_diff = angle_difference(bearing, lrp.bear)
     if abs(bear_diff) > config.max_bear_deviation:
         if observer is not None:
@@ -66,7 +72,7 @@ def make_candidate(
             f"bear: {bearing}. lrp bear: {lrp.bear}",
         )
         return
-    candidate.score = score_lrp_candidate(lrp, candidate, config, is_last_lrp)
+    candidate.score = score_lrp_candidate(lrp, candidate, config, is_last_lrp, geo_tool)
     if candidate.score < config.min_score:
         if observer is not None:
             observer.on_candidate_rejected(
@@ -86,22 +92,17 @@ def make_candidate(
 
 
 def nominate_candidates(
-    lrp: LocationReferencePoint, reader: MapReader, config: Config,
-    observer: Optional[DecoderObserver], is_last_lrp: bool
+        lrp: LocationReferencePoint, reader: MapReader, config: Config,  observer: Optional[DecoderObserver], is_last_lrp: bool, geo_tool: GeoTool
 ) -> Iterable[Candidate]:
     "Yields candidate lines for the LRP along with their score."
     debug(
         f"Finding candidates for LRP {lrp} at {coords(lrp)} in radius {config.search_radius}"
     )
     for line in reader.find_lines_close_to(coords(lrp), config.search_radius):
-        candidate = make_candidate(lrp, line, config, observer, is_last_lrp)
-        if candidate:
-            yield candidate
+        yield from make_candidates(lrp, line, config, observer, is_last_lrp, geo_tool)
 
 
-def get_candidate_route(
-    start: Candidate, dest: Candidate, lfrc: FRC, maxlen: float
-) -> Optional[Route]:
+def get_candidate_route(start: Candidate, dest: Candidate, lfrc: FRC, maxlen: float, geo_tool) -> Optional[Route]:
     """Returns the shortest path between two LRP candidates, excluding partial lines.
 
     If it is longer than `maxlen`, it is treated as if no path exists.
@@ -132,7 +133,7 @@ def get_candidate_route(
     linefilter = lambda line: line.frc <= lfrc
     try:
         path = shortest_path(
-            start.line.end_node, dest.line.start_node, linefilter, maxlen=maxlen
+            start.line.end_node, dest.line.start_node, geo_tool=geo_tool, linefilter=linefilter, maxlen=maxlen
         )
         debug(f"Returning {path}")
         return Route(start, path, dest)
@@ -142,12 +143,13 @@ def get_candidate_route(
 
 
 def match_tail(
-    current: LocationReferencePoint,
-    candidates: List[Candidate],
-    tail: List[LocationReferencePoint],
-    reader: MapReader,
-    config: Config,
-    observer: Optional[DecoderObserver],
+        current: LocationReferencePoint,
+        candidates: List[Candidate],
+        tail: List[LocationReferencePoint],
+        reader: MapReader,
+        config: Config,
+        observer: Optional[DecoderObserver],
+        geo_tool: GeoTool
 ) -> List[Route]:
     """Searches for the rest of the line location.
 
@@ -186,7 +188,7 @@ def match_tail(
 
     # Generate all pairs of candidates for the first two lrps
     next_lrp = tail[0]
-    next_candidates = list(nominate_candidates(next_lrp, reader, config, observer, last_lrp))
+    next_candidates = list(nominate_candidates(next_lrp, reader, config, observer, last_lrp, geo_tool))
 
     pairs = list(product(candidates, next_candidates))
     # Sort by line scores
@@ -195,7 +197,7 @@ def match_tail(
     # For every pair of candidates, search for a path matching our requirements
     for (c_from, c_to) in pairs:
         route = handleCandidatePair(
-            (current, next_lrp), (c_from, c_to), observer, lfrc, minlen, maxlen
+            (current, next_lrp), (c_from, c_to), observer, lfrc, minlen, maxlen, geo_tool
         )
         if route is None:
             continue
@@ -203,7 +205,7 @@ def match_tail(
             return [route]
         try:
             return [route] + match_tail(
-                next_lrp, [c_to], tail[1:], reader, config, observer
+                next_lrp, [c_to], tail[1:], reader, config, observer, geo_tool
             )
         except LRDecodeError:
             debug("Recursive call to resolve remaining path had no success")
@@ -215,13 +217,14 @@ def match_tail(
 
 
 def handleCandidatePair(
-    lrps: Tuple[LocationReferencePoint, LocationReferencePoint],
-    candidates: Tuple[Candidate, Candidate],
-    observer: Optional[DecoderObserver],
-    lowest_frc: FRC,
-    minlen: float,
-    maxlen: float,
-) -> Optional[Route]:
+        lrps: Tuple[LocationReferencePoint, LocationReferencePoint],
+        candidates: Tuple[Candidate, Candidate],
+        observer: Optional[DecoderObserver],
+        lowest_frc: FRC,
+        minlen: float,
+        maxlen: float,
+        geo_tool: GeoTool
+    ) -> Optional[Route]:
     """
     Try to find an adequate route between two LRP candidates.
 
@@ -245,7 +248,7 @@ def handleCandidatePair(
     """
     current, next_lrp = lrps
     source, dest = candidates
-    route = get_candidate_route(source, dest, lowest_frc, maxlen)
+    route = get_candidate_route(source, dest, lowest_frc, maxlen, geo_tool)
 
     if not route:
         debug("No path for candidate found")
