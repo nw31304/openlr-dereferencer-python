@@ -5,6 +5,7 @@ from shapely.geometry import LineString
 from shapely.ops import substring
 from openlr import Coordinates
 from ..maps.abstract import Line, path_length, GeoTool
+from functools import lru_cache
 
 
 class PointOnLine(NamedTuple):
@@ -20,14 +21,17 @@ class PointOnLine(NamedTuple):
         geometry_length = geo_tool.line_string_length(self.line.geometry)
         return geometry_length * self.relative_offset
 
+    @lru_cache(maxsize=1)
     def position(self, geo_tool: GeoTool) -> Coordinates:
         "Returns the actual geo position"
         return geo_tool.interpolate(self.line.coordinates(), self._geometry_length_from_start(geo_tool))
 
+    @lru_cache(maxsize=1)
     def distance_from_start(self) -> float:
         "Returns the distance in meters from the start of the line to the point"
         return self.relative_offset * self.line.length
 
+    @lru_cache(maxsize=1)
     def distance_to_end(self) -> float:
         "Returns the distance in meters from the point to the end of the line"
         return (1.0 - self.relative_offset) * self.line.length

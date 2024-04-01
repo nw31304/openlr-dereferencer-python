@@ -56,15 +56,16 @@ def project(line: Line, coord: Coordinates, geo_tool: GeoTool) -> PointOnLine:
     Returns: The point on `line` where this nearest point resides"""
     fraction = line.geometry.project(Point(coord.lon, coord.lat), normalized=True)
 
-    to_projection_point = substring(line.geometry, 0.0, fraction, normalized=True)
+    # to_projection_point = substring(line.geometry, 0.0, fraction, normalized=True)
 
-    meters_to_projection_point = geo_tool.line_string_length(to_projection_point)
-    #geometry_length = geo_tool.line_string_length(line.geometry)
-    geometry_length = line.length
+    # meters_to_projection_point = geo_tool.line_string_length(to_projection_point)
+    # #geometry_length = geo_tool.line_string_length(line.geometry)
+    # geometry_length = line.length
 
-    length_fraction = meters_to_projection_point / geometry_length
+    # length_fraction = meters_to_projection_point / geometry_length
 
-    return PointOnLine(line, length_fraction)
+    # return PointOnLine(line, length_fraction)
+    return PointOnLine(line, fraction)
 
 
 def linestring_coords(line: LineString) -> List[Coordinates]:

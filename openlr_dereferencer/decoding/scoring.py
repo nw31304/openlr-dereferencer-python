@@ -21,8 +21,8 @@ def score_geolocation(wanted: LocationReferencePoint, actual: PointOnLine, radiu
     """Scores the geolocation of a candidate.
 
     A distance of `radius` or more will result in a 0.0 score."""
-    debug("Candidate coords are %s", actual.position())
-    dist = distance(coords(wanted), actual.position())
+    debug("Candidate coords are %s", actual.position(geo_tool))
+    dist = geo_tool.distance(coords(wanted), actual.position(geo_tool))
     if dist < radius:
         return 1.0 - dist / radius
     return 0.0

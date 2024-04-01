@@ -131,8 +131,8 @@ def get_candidate_route(start: Candidate, dest: Candidate, lfrc: FRC, maxlen: fl
     """
     debug("Try to find path between %s,%s",start, dest)
     if start.line.line_id == dest.line.line_id:
-        return Route(start, [], dest)
-    debug("Finding path between nodes %d,%d",start.line.end_node.node_id, dest.line.start_node.node_id)
+        return Route(start, [], dest, geo_tool)
+    debug("Finding path between nodes %s,%s",start.line.end_node.node_id, dest.line.start_node.node_id)
     linefilter = lambda line: line.frc <= lfrc
     try:
         path = shortest_path(start.line.end_node, dest.line.start_node, linefilter, maxlen=maxlen)
