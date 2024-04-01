@@ -62,7 +62,8 @@ def make_candidates(
     bearing = compute_bearing(lrp, candidate, is_last_lrp, config.bear_dist, geo_tool)
     bear_diff = angle_difference(bearing, lrp.bear)
     if abs(bear_diff) > config.max_bear_deviation:
-        debug("Not considering %s because the bearing difference is %.02f°. (bear: %.02f. lrp bear: %.02f)", candidate, bear_diff, bearing, lrp.bear)
+        debug("Not considering %s because the bearing difference is %.02f°. (bear: %.02f. lrp bear: %.02f)", candidate,
+              bear_diff, bearing, lrp.bear)
         if observer is not None:
             observer.on_candidate_rejected(
                 lrp, candidate,
