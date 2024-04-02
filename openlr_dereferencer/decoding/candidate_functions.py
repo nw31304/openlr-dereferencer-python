@@ -20,8 +20,8 @@ def make_candidates(
         lrp: LocationReferencePoint,
         line: Line,
         config: Config,
-        is_last_lrp: bool,
         observer: Optional[DecoderObserver],
+        is_last_lrp: bool,
         geo_tool: GeoTool
 ) -> Iterable[Candidate]:
     "Returns one or none LRP candidates based on the given line"
@@ -91,7 +91,7 @@ def make_candidates(
         observer.on_candidate_found(
             lrp, candidate,
         )
-    return candidate
+    yield candidate
 
 
 def nominate_candidates(
@@ -135,9 +135,9 @@ def get_candidate_route(start: Candidate, dest: Candidate, lfrc: FRC, maxlen: fl
     debug("Finding path between nodes %s,%s",start.line.end_node.node_id, dest.line.start_node.node_id)
     linefilter = lambda line: line.frc <= lfrc
     try:
-        path = shortest_path(start.line.end_node, dest.line.start_node, linefilter, maxlen=maxlen)
+        path = shortest_path(start.line.end_node, dest.line.start_node, geo_tool, linefilter, maxlen=maxlen)
         debug("Returning %s", path)
-        return Route(start, path, dest)
+        return Route(start, path, dest, geo_tool)
     except LRPathNotFoundError:
         debug("No path found between these nodes")
         return None

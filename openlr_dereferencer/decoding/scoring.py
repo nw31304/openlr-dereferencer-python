@@ -6,7 +6,7 @@ The result of the scoring functions will be floats from 0.0 to 1.0,
 with `1.0` being an exact match and 0.0 being a non-match."""
 
 from logging import debug
-from openlr import FRC, FOW, LocationReferencePoint
+from openlr import FRC, LocationReferencePoint
 from .path_math import coords, PointOnLine, compute_bearing
 from .configuration import Config
 from ..maps.abstract import GeoTool
@@ -120,7 +120,7 @@ def score_lrp_candidate(
 
     This is the average of fow, frc, geo and bearing score."""
     debug("scoring %s with config %s", candidate, config)
-    geo_score = config.geo_weight * score_geolocation(wanted, candidate, config.search_radius)
+    geo_score = config.geo_weight * score_geolocation(wanted, candidate, config.search_radius, geo_tool)
     fow_score = config.fow_weight * config.fow_standin_score[wanted.fow][candidate.line.fow]
     frc_score = config.frc_weight * score_frc(wanted.frc, candidate.line.frc)
     bear_score = score_bearing(wanted, candidate, is_last_lrp, config.bear_dist, geo_tool)
