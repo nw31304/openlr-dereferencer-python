@@ -20,9 +20,11 @@ from ._version import (
 
 __geo_tool__ = WGS84GeoTool()
 
+
 def set_geotool(tool: GeoTool):
     global __geo_tool__
     __geo_tool__ = tool
+
 
 def geotool() -> GeoTool:
     global __geo_tool__

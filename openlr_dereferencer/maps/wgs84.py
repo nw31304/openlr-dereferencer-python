@@ -1,4 +1,4 @@
-"Some geo coordinates related tools"
+"""Some geo coordinates related tools"""
 from math import radians, degrees
 from typing import Sequence, Tuple, Optional
 from geographiclib.geodesic import Geodesic
@@ -7,8 +7,9 @@ from shapely.geometry import LineString
 from itertools import tee
 from .abstract import GeoTool
 
+
 def pairwise(iterable):
-    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    """s -> (s0,s1), (s1,s2), (s2, s3), ..."""
     first, second = tee(iterable)
     next(second, None)
     return zip(first, second)
@@ -26,7 +27,7 @@ class WGS84GeoTool(GeoTool):
         return coord
 
     def distance(self, point_a: Coordinates, point_b: Coordinates) -> float:
-        "Returns the distance of two WGS84 coordinates on our planet, in meters"
+        """Returns the distance of two WGS84 coordinates on our planet, in meters"""
         (lon1, lat1) = point_a.lon, point_a.lat
         (lon2, lat2) = point_b.lon, point_b.lat
         line = self.geod.Inverse(lat1, lon1, lat2, lon2, Geodesic.DISTANCE)
@@ -34,17 +35,15 @@ class WGS84GeoTool(GeoTool):
         # point 1 and 2 is stored in the attribute `s12`.
         return line["s12"]
 
-
     def line_string_length(self, line_string: LineString) -> float:
         """Returns the length of a line string in meters"""
         length = 0
 
         for (coord_a, coord_b) in pairwise(line_string.coords):
-            l = self.geod.Inverse(coord_a[1], coord_a[0], coord_b[1], coord_b[0], Geodesic.DISTANCE)
-            length += l["s12"]
+            lvals = self.geod.Inverse(coord_a[1], coord_a[0], coord_b[1], coord_b[0], Geodesic.DISTANCE)
+            length += lvals["s12"]
 
         return length
-
 
     def bearing(self, point_a: Coordinates, point_b: Coordinates) -> float:
         """Returns the angle between self and other relative to true north
@@ -55,15 +54,13 @@ class WGS84GeoTool(GeoTool):
         # first point in degrees is stored as the attribute `azi1`.
         return radians(line["azi1"])
 
-
     def extrapolate(self, point: Coordinates, dist: float, angle: float) -> Coordinates:
-        "Creates a new point that is `dist` meters away in direction `angle`"
+        """Creates a new point that is `dist` meters away in direction `angle`"""
         lon, lat = point.lon, point.lat
         line = self.geod.Direct(lat, lon, degrees(angle), dist)
         # According to https://geographiclib.sourceforge.io/1.50/python/, the attributes `lon2`
         # and `lat2` store the second point.
         return Coordinates(line["lon2"], line["lat2"])
-
 
     def interpolate(self, path: Sequence[Coordinates], distance_meters: float) -> Coordinates:
         """Go `distance` meters along the `path` and return the resulting point
@@ -82,7 +79,7 @@ class WGS84GeoTool(GeoTool):
         return segments[-1][1]
 
     def split_line(self, line: LineString, meters_into: float) -> Tuple[Optional[LineString], Optional[LineString]]:
-        "Splits a line at `meters_into` meters and returns the two parts. A part is None if it would be a Point"
+        """Splits a line at `meters_into` meters and returns the two parts. A part is None if it would be a Point"""
         first_part = []
         second_part = []
         remaining_offset = meters_into
@@ -101,18 +98,17 @@ class WGS84GeoTool(GeoTool):
             else:
                 second_part.append(point_to)
         if splitpoint is None:
-            return (line, None)
+            return line, None
         first_part = LineString(first_part) if len(first_part) > 1 else None
         second_part = LineString(second_part) if len(second_part) > 1 else None
-        return (first_part, second_part)
-
+        return first_part, second_part
 
     def join_lines(self, lines: Sequence[LineString]) -> LineString:
         coords = []
         last = None
 
-        for l in lines:
-            cs = l.coords
+        for line in lines:
+            cs = line.coords
             first = cs[0]
 
             if last is None:

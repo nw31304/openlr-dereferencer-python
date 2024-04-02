@@ -1,11 +1,11 @@
-"Helper functions for A*"
+"""Helper functions for A*"""
 
 from functools import lru_cache
 from ..abstract import Node, GeoTool
 
 
 class LRPathNotFoundError(Exception):
-    "No path was found through the map"
+    """No path was found through the map"""
 
 
 @lru_cache(maxsize=2)
@@ -17,5 +17,5 @@ def heuristic(current: Node, target: Node, geo_tool: GeoTool) -> float:
 
 
 def tautology(_) -> bool:
-    "Returns always True, used as default line filter function."
+    """Returns always True, used as default line filter function."""
     return True

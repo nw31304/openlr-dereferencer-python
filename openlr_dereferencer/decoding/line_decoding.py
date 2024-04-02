@@ -1,4 +1,4 @@
-"Contains the decoding logic for line location"
+"""Contains the decoding logic for line location"""
 
 from typing import List, Optional
 from openlr import LineLocationReference, LocationReferencePoint
@@ -18,7 +18,7 @@ def dereference_path(
         observer: Optional[DecoderObserver],
         geo_tool: GeoTool
 ) -> List[Route]:
-    "Decode the location reference path, without considering any offsets"
+    """Decode the location reference path, without considering any offsets"""
     first_lrp = lrps[0]
     first_candidates = list(nominate_candidates(first_lrp, reader, config, observer, False, geo_tool))
 

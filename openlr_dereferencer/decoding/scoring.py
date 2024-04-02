@@ -6,14 +6,16 @@ The result of the scoring functions will be floats from 0.0 to 1.0,
 with `1.0` being an exact match and 0.0 being a non-match."""
 
 from logging import debug
+
 from openlr import FRC, LocationReferencePoint
-from .path_math import coords, PointOnLine, compute_bearing
+
 from .configuration import Config
+from .path_math import coords, PointOnLine, compute_bearing
 from ..maps.abstract import GeoTool
 
 
 def score_frc(wanted: FRC, actual: FRC) -> float:
-    "Return a score for a FRC value"
+    """Return a score for a FRC value"""
     return 1.0 - abs(actual - wanted) / 7
 
 
@@ -98,24 +100,17 @@ def score_angle_difference(angle1: float, angle2: float) -> float:
     return 1 - abs(difference) / 180
 
 
-def score_bearing(
-        wanted: LocationReferencePoint,
-        actual: PointOnLine,
-        is_last_lrp: bool,
-        bear_dist: float,
-        geo_tool: GeoTool
-) -> float:
+def score_bearing(wanted: LocationReferencePoint, actual: PointOnLine, is_last_lrp: bool, bear_dist: float,
+                  geo_tool: GeoTool) -> float:
     """Scores the difference between expected and actual bearing angle.
 
     A difference of 0° will result in a 1.0 score, while 180° will cause a score of 0.0."""
-    bear = compute_bearing(wanted, actual, is_last_lrp, bear_dist, geo_tool)
+    bear = compute_bearing(actual, is_last_lrp, bear_dist, geo_tool)
     return score_angle_sector_differences(wanted.bear, bear)
 
 
-def score_lrp_candidate(
-        wanted: LocationReferencePoint,
-        candidate: PointOnLine, config: Config, is_last_lrp: bool, geo_tool: GeoTool
-) -> float:
+def score_lrp_candidate(wanted: LocationReferencePoint, candidate: PointOnLine, config: Config, is_last_lrp: bool,
+                        geo_tool: GeoTool) -> float:
     """Scores the candidate (line) for the LRP.
 
     This is the average of fow, frc, geo and bearing score."""
@@ -126,6 +121,6 @@ def score_lrp_candidate(
     bear_score = score_bearing(wanted, candidate, is_last_lrp, config.bear_dist, geo_tool)
     bear_score *= config.bear_weight
     score = fow_score + frc_score + geo_score + bear_score
-    debug("Score: geo(%.02f) + fow(%.02f) + frc(%.02f) + bear(%.02f) = %.02f", geo_score, fow_score, frc_score, bear_score, score
-    )
+    debug("Score: geo(%.02f) + fow(%.02f) + frc(%.02f) + bear(%.02f) = %.02f", geo_score, fow_score,
+          frc_score, bear_score, score)
     return score

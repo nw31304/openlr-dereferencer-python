@@ -1,24 +1,25 @@
-"Functions for reckoning with paths, bearing, and offsets"
+"""Functions for reckoning with paths, bearing, and offsets"""
 
-from math import degrees
-from typing import List, Optional, Sequence
 from logging import debug
-from shapely.geometry import LineString, Point
-from shapely.ops import substring
+from math import degrees
+from typing import List
+
 from openlr import Coordinates, LocationReferencePoint
+from shapely.geometry import LineString, Point
+
 from .error import LRDecodeError
 from .routes import Route, PointOnLine
 from ..maps import Line
 from ..maps.abstract import GeoTool
 
 
-def remove_offsets(path: Route, p_off: float, n_off: float, geo_tool:GeoTool) -> Route:
+def remove_offsets(path: Route, p_off: float, n_off: float, geo_tool: GeoTool) -> Route:
     """Remove start+end offsets, measured in meters, from a route and return the result"""
     debug("Will consider positive offset = %.02fm and negative offset %.02fm.", p_off, n_off)
     lines = path.lines
     debug("This route consists of %s and is %.02fm long.", lines, path.length())
     # Remove positive offset
-    debug("first line's offset is %.02f",path.absolute_start_offset)
+    debug("first line's offset is %.02f", path.absolute_start_offset)
     remaining_poff = p_off + path.absolute_start_offset
     while remaining_poff >= lines[0].length:
         debug("Remaining positive offset %.02f is greater than the first line. Removing it.", remaining_poff)
@@ -37,20 +38,16 @@ def remove_offsets(path: Route, p_off: float, n_off: float, geo_tool:GeoTool) ->
         end_line = lines.pop()
     else:
         end_line = start_line
-    return Route(
-        PointOnLine.from_abs_offset(start_line, remaining_poff),
-        lines,
-        PointOnLine.from_abs_offset(end_line, end_line.length - remaining_noff),
-        geo_tool
-    )
+    return Route(PointOnLine.from_abs_offset(start_line, remaining_poff), lines,
+                 PointOnLine.from_abs_offset(end_line, end_line.length - remaining_noff), geo_tool)
 
 
 def coords(lrp: LocationReferencePoint) -> Coordinates:
-    "Return the coordinates of an LRP"
+    """Return the coordinates of an LRP"""
     return Coordinates(lrp.lon, lrp.lat)
 
 
-def project(line: Line, coord: Coordinates, geo_tool: GeoTool) -> PointOnLine:
+def project(line: Line, coord: Coordinates) -> PointOnLine:
     """Computes the nearest point to `coord` on the line
 
     Returns: The point on `line` where this nearest point resides"""
@@ -69,18 +66,13 @@ def project(line: Line, coord: Coordinates, geo_tool: GeoTool) -> PointOnLine:
 
 
 def linestring_coords(line: LineString) -> List[Coordinates]:
-    "Returns the edges of the line geometry as Coordinate list"
+    """Returns the edges of the line geometry as Coordinate list"""
     return [Coordinates(*point) for point in line.coords]
 
 
-def compute_bearing(
-        lrp: LocationReferencePoint,
-        candidate: PointOnLine,
-        is_last_lrp: bool,
-        bear_dist: float,
-        geo_tool: GeoTool
-) -> float:
-    "Returns the bearing angle of a partial line in degrees in the range 0.0 .. 360.0"
+def compute_bearing(candidate: PointOnLine, is_last_lrp: bool, bear_dist: float,
+                    geo_tool: GeoTool) -> float:
+    """Returns the bearing angle of a partial line in degrees in the range 0.0 . 360.0"""
 
     # check if the bearing and origin points coincide, and return early if so
     if (not is_last_lrp and candidate.position == 1.0) or (is_last_lrp and candidate.position == 0.0):
@@ -100,8 +92,6 @@ def compute_bearing(
     # bear = geo_tool.bearing(Coordinates(*coords[0]), Coordinates(*coords[-1]))
     # return degrees(bear) % 360
 
-
-    bearing_point: Optional[Coordinates] = None
     coordinates = candidate.line.coordinates()
     origin = geo_tool.interpolate(coordinates, candidate.distance_from_start())
 
@@ -115,17 +105,3 @@ def compute_bearing(
             bearing_point = geo_tool.interpolate(coordinates, candidate.distance_from_start() + bear_dist)
     bear = geo_tool.bearing(origin, bearing_point)
     return degrees(bear) % 360
-
-    # line1, line2 = candidate.split(geo_tool)
-    # if is_last_lrp:
-    #     if line1 is None:
-    #         return 0.0
-    #     coordinates = linestring_coords(line1)
-    #     coordinates.reverse()
-    # else:
-    #     if line2 is None:
-    #         return 0.0
-    #     coordinates = linestring_coords(line2)
-    # bearing_point = geo_tool.interpolate(coordinates, bear_dist)
-    # bear = geo_tool.bearing(coordinates[0], bearing_point)
-    # return degrees(bear) % 360

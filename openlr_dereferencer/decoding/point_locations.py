@@ -1,4 +1,4 @@
-"Decoding logic for point (along line, ...) locations"
+"""Decoding logic for point (along line, ...) locations"""
 
 from typing import NamedTuple, Tuple, Optional
 from openlr import (
@@ -29,7 +29,7 @@ class PointAlongLine(NamedTuple):
     geo_tool: GeoTool
 
     def coordinates(self) -> Coordinates:
-        "Returns the geo coordinates of the point"
+        """Returns the geo coordinates of the point"""
         return self.geo_tool.interpolate(list(self.line.coordinates()), self.positive_offset)
 
 
@@ -60,7 +60,7 @@ def decode_pointalongline(
         observer: Optional[DecoderObserver],
         geo_tool: GeoTool
 ) -> PointAlongLine:
-    "Decodes a point along line location reference into a PointAlongLine object"
+    """Decodes a point along line location reference into a PointAlongLine object"""
     path = combine_routes(dereference_path(reference.points, reader, config, observer, geo_tool), geo_tool)
     absolute_offset = path.length() * reference.poffs
     line_object, line_offset = point_along_linelocation(path, absolute_offset)
@@ -68,7 +68,7 @@ def decode_pointalongline(
 
 
 class PoiWithAccessPoint(NamedTuple):
-    "A dereferenced POI with access point location."
+    """A dereferenced POI with access point location."""
     line: Line
     positive_offset: float
     side: SideOfRoad
@@ -76,7 +76,7 @@ class PoiWithAccessPoint(NamedTuple):
     poi: Coordinates
 
     def access_point_coordinates(self, geo_tool: GeoTool) -> Coordinates:
-        "Returns the geo coordinates of the access point"
+        """Returns the geo coordinates of the access point"""
         return geo_tool.interpolate(list(self.line.coordinates()), self.positive_offset)
 
 
@@ -87,7 +87,7 @@ def decode_poi_with_accesspoint(
         observer: Optional[DecoderObserver],
         geo_tool: GeoTool
 ) -> PoiWithAccessPoint:
-    "Decodes a poi with access point location reference into a PoiWithAccessPoint"
+    """Decodes a poi with access point location reference into a PoiWithAccessPoint"""
     path = combine_routes(dereference_path(reference.points, reader, config, observer, geo_tool), geo_tool)
     absolute_offset = path_length(get_lines([path])) * reference.poffs
     line, line_offset = point_along_linelocation(path, absolute_offset)
