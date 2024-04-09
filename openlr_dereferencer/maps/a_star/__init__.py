@@ -107,7 +107,7 @@ def shortest_path(
             continue
 
         # Add neighbors to the queue
-        for line in current_node.outgoing_lines():
+        for line in current_node.outgoing_lines(current.line):
             if not linefilter(line):
                 continue
 

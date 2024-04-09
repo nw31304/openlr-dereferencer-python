@@ -1,7 +1,7 @@
 """Contains functions for candidate searching and map matching"""
 
 from itertools import product
-from logging import debug
+from logging import debug,error
 from typing import Optional, Iterable, List, Tuple
 
 from openlr import FRC, LocationReferencePoint
@@ -57,22 +57,28 @@ def make_candidates(lrp: LocationReferencePoint, line: Line, config: Config, obs
     candidate = Candidate(line, reloff)
     bearing = compute_bearing(candidate, is_last_lrp, config.bear_dist, geo_tool)
     bear_diff = angle_difference(bearing, lrp.bear)
+    if line.frc > config.tolerated_lfrc[lrp.lfrcnp]:
+        msg = f"not considering {candidate} because its frc ({line.frc}) is less than the minimum allowed frc ({config.tolerated_lfrc[lrp.lfrcnp]})"
+        debug(msg)
+        if observer is not None:
+            observer.on_candidate_rejected_frc(lrp, candidate, config.tolerated_lfrc[lrp.lfrcnp])
+        return
+
     if abs(bear_diff) > config.max_bear_deviation:
         debug("Not considering %s because the bearing difference is %.02f°. (bear: %.02f. lrp bear: %.02f)", candidate,
               bear_diff, bearing, lrp.bear)
         if observer is not None:
-            observer.on_candidate_rejected(lrp, candidate,
-                                           f"Bearing difference = {bear_diff} greater than max. bearing deviation = {config.max_bear_deviation}", )
-        debug(f"Not considering %s because the bearing difference is %s °.", f"bear: %s. lrp bear: %s", candidate,
+            observer.on_candidate_rejected_bearing(lrp, candidate, bearing, bear_diff, config.max_bear_deviation)
+
+        debug(f"Not considering %s because the bearing difference is %s ° (bear: %s. lrp bear: %s)", candidate,
               bear_diff, bearing, lrp.bear)
         return
-    candidate.score = score_lrp_candidate(lrp, candidate, config, is_last_lrp, geo_tool)
+    candidate.score = score_lrp_candidate(lrp, candidate, config, is_last_lrp, observer, geo_tool)
     if candidate.score < config.min_score:
         if observer is not None:
             observer.on_candidate_rejected(lrp, candidate,
                                            f"Candidate score = {candidate.score} lower than min. score = {config.min_score}", )
-        debug(f"Not considering {candidate}",
-              f"Candidate score = {candidate.score} < min. score = {config.min_score}", )
+        debug(f"Not considering {candidate}: candidate score = {candidate.score} < min. score = {config.min_score}")
         return
     if observer is not None:
         observer.on_candidate_found(lrp, candidate, )
@@ -148,7 +154,7 @@ def match_tail(current: LocationReferencePoint, candidates: List[Candidate], tai
         observer:
             The optional decoder observer, which emits events and calls back.
         geo_tool:
-            A reference to an instance of GeoTool that understands the tail's CRS
+            A reference to an instance of GeoTool that understands the map's CRS
 
     Returns:
         If any candidate pair matches, the function calls itself for the rest of `tail` and
@@ -167,6 +173,14 @@ def match_tail(current: LocationReferencePoint, candidates: List[Candidate], tai
     # Generate all pairs of candidates for the first two lrps
     next_lrp = tail[0]
     next_candidates = list(nominate_candidates(next_lrp, reader, config, observer, last_lrp, geo_tool))
+    if not next_candidates:
+        if observer is not None:
+            observer.on_no_candidates_found(next_lrp)
+        msg = f"No candidates found for LRP {next_lrp}"
+        debug(msg)
+        raise LRDecodeError(msg)
+    elif observer is not None:
+        observer.on_candidates_found(next_lrp, next_candidates)
 
     pairs = list(product(candidates, next_candidates))
     # Sort by line scores
@@ -236,6 +250,7 @@ def handleCandidatePair(lrps: Tuple[LocationReferencePoint, LocationReferencePoi
     if length < minlen or length > maxlen:
         debug("Shortest path deviation from DNP is too large")
         if observer is not None:
+            observer.on_route_fail_length(current, next_lrp, source, dest, route, length, minlen, maxlen)
             observer.on_route_fail(current, next_lrp, source, dest, "Shortest path deviation from DNP is too large")
         return None
 

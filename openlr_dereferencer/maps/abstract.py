@@ -171,11 +171,11 @@ class Node(GeometricObject):
         return Point(*self.coordinates)
 
     @abstractmethod
-    def outgoing_lines(self) -> Iterable[Line]:
+    def outgoing_lines(self, source: Optional[Line] = None) -> Iterable[Line]:
         """Yields all lines coming directly from this node"""
 
     @abstractmethod
-    def incoming_lines(self) -> Iterable[Line]:
+    def incoming_lines(self, source: Optional[Line] = None) -> Iterable[Line]:
         """Yields all lines coming directly to this node."""
 
     @abstractmethod

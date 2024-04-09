@@ -6,11 +6,13 @@ The result of the scoring functions will be floats from 0.0 to 1.0,
 with `1.0` being an exact match and 0.0 being a non-match."""
 
 from logging import debug
+from typing import Optional
 
 from openlr import FRC, LocationReferencePoint
 
 from .configuration import Config
 from .path_math import coords, PointOnLine, compute_bearing
+from ..observer.abstract import DecoderObserver
 from ..maps.abstract import GeoTool
 
 
@@ -110,7 +112,7 @@ def score_bearing(wanted: LocationReferencePoint, actual: PointOnLine, is_last_l
 
 
 def score_lrp_candidate(wanted: LocationReferencePoint, candidate: PointOnLine, config: Config, is_last_lrp: bool,
-                        geo_tool: GeoTool) -> float:
+                        observer: Optional[DecoderObserver], geo_tool: GeoTool) -> float:
     """Scores the candidate (line) for the LRP.
 
     This is the average of fow, frc, geo and bearing score."""
@@ -121,6 +123,8 @@ def score_lrp_candidate(wanted: LocationReferencePoint, candidate: PointOnLine, 
     bear_score = score_bearing(wanted, candidate, is_last_lrp, config.bear_dist, geo_tool)
     bear_score *= config.bear_weight
     score = fow_score + frc_score + geo_score + bear_score
+    if observer is not None:
+        observer.on_candidate_score(wanted, candidate, geo_score, fow_score, frc_score, bear_score, score)
     debug("Score: geo(%.02f) + fow(%.02f) + frc(%.02f) + bear(%.02f) = %.02f", geo_score, fow_score,
           frc_score, bear_score, score)
     return score
